@@ -21,6 +21,12 @@ enum OrderStatus {
   cancelled
 }
 
+enum CommentStatus {
+  pending
+  approved
+  rejected
+}
+
 model User {
   id             Int      @id @default(autoincrement())
   name           String
@@ -32,9 +38,12 @@ model User {
   defaultAddress Json?    @map("default_address")
   createdAt      DateTime @default(now()) @map("created_at")
 
-  cartItems CartItem[]
-  orders    Order[]
-  addresses UserAddress[]
+  cartItems     CartItem[]
+  orders        Order[]
+  addresses     UserAddress[]
+  wishlistItems WishlistItem[]
+  ratings       Rating[]
+  comments      Comment[]
 
   @@map("users")
 }
@@ -68,10 +77,15 @@ model Product {
   sku         String   @unique
   imageUrl    String   @default("") @map("image_url")
   category    String   @default("")
+  avgRating   Float    @default(0) @map("avg_rating")
+  ratingCount Int      @default(0) @map("rating_count")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  cartItems  CartItem[]
-  orderItems OrderItem[]
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  wishlistItems WishlistItem[]
+  ratings       Rating[]
+  comments      Comment[]
 
   @@index([category])
   @@index([name])
@@ -124,4 +138,49 @@ model OrderItem {
   product Product @relation(fields: [productId], references: [id])
 
   @@map("order_items")
+}
+
+/// Wishlist: members-only, supports add/remove. Out-of-stock products allowed.
+model WishlistItem {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  productId Int      @map("product_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@map("wishlist_items")
+}
+
+/// Rating: 1-5 stars, one per user per product. Only if product purchased & order delivered.
+model Rating {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  productId Int      @map("product_id")
+  value     Int
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("ratings")
+}
+
+/// Comment: pending by default, visible only when approved. Independent from rating.
+model Comment {
+  id        Int           @id @default(autoincrement())
+  userId    Int           @map("user_id")
+  productId Int           @map("product_id")
+  text      String
+  status    CommentStatus @default(pending)
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("comments")
 }
