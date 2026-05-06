@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
@@ -74,6 +74,15 @@ export default function Account() {
 
   const [wishlists, setWishlists] = useState<WishlistList[]>([]);
   const [loadingWishlists, setLoadingWishlists] = useState(true);
+
+  const profileNameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditingProfile) {
+      profileNameInputRef.current?.focus();
+      profileNameInputRef.current?.select();
+    }
+  }, [isEditingProfile]);
 
   useEffect(() => {
     setProfileName(user.name);
@@ -494,6 +503,7 @@ export default function Account() {
               <div>
                 <label className="input-label">Name</label>
                 <input
+                  ref={profileNameInputRef}
                   type="text"
                   value={profileName}
                   onChange={(e) => setProfileName(e.target.value)}
