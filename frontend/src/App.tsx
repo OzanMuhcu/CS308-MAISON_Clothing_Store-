@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -21,6 +21,13 @@ import Sustainability from "./pages/Sustainability";
 import Contact from "./pages/Contact";
 import Shipping from "./pages/Shipping";
 import SizeGuide from "./pages/SizeGuide";
+import RevenueChart from "./pages/RevenueChart";
+
+function RoleGate({ role, children }: { role: string; children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (!user || user.role !== role) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
 
 export default function App() {
   return (
@@ -47,6 +54,7 @@ export default function App() {
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/shipping" element={<Shipping />} />
                 <Route path="/size-guide" element={<SizeGuide />} />
+                <Route path="/admin/revenue" element={<ProtectedRoute><RoleGate role="sales_manager"><RevenueChart /></RoleGate></ProtectedRoute>} />
                 <Route path="*" element={<div className="text-center py-20"><h1 className="font-display text-4xl text-brand-900 mb-2">404</h1><p className="text-sm text-brand-500">Page not found</p></div>} />
               </Routes>
             </main>
