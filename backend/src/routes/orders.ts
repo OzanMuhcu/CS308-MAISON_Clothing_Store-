@@ -79,6 +79,72 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
+// GET /api/orders/revenue?from=YYYY-MM-DD&to=YYYY-MM-DD — Story 32
+// Daily revenue totals across all orders in the inclusive date range.
+// sales_manager only. Missing days in the range are filled with revenue=0
+// so the resulting series is continuous and chart-friendly.
+router.get("/revenue", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (req.user!.role !== "sales_manager") {
+      throw new AppError(403, "Only sales managers can view revenue data");
+    }
+
+    // Default range: last 30 days (inclusive) when no params given.
+    const now = new Date();
+    const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const defaultFrom = new Date(todayUtc);
+    defaultFrom.setUTCDate(defaultFrom.getUTCDate() - 29);
+
+    const parseDate = (raw: unknown, fallback: Date): Date => {
+      if (typeof raw !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return fallback;
+      const [y, m, d] = raw.split("-").map(Number);
+      const dt = new Date(Date.UTC(y, m - 1, d));
+      return isNaN(dt.getTime()) ? fallback : dt;
+    };
+
+    const from = parseDate(req.query.from, defaultFrom);
+    const to = parseDate(req.query.to, todayUtc);
+    if (from > to) {
+      throw new AppError(400, "'from' must not be after 'to'");
+    }
+    const toEnd = new Date(to);
+    toEnd.setUTCHours(23, 59, 59, 999);
+
+    type DailyRow = { day: Date; total: number };
+    const rows = await prisma.$queryRaw<DailyRow[]>`
+      SELECT date_trunc('day', "created_at")::date AS day,
+             COALESCE(SUM("total_amount"), 0)::float AS total
+      FROM "orders"
+      WHERE "created_at" >= ${from} AND "created_at" <= ${toEnd}
+      GROUP BY day
+      ORDER BY day ASC
+    `;
+
+    // Fill missing days with zero revenue so the line chart is continuous.
+    const byDay = new Map<string, number>();
+    for (const r of rows) {
+      const key = new Date(r.day).toISOString().slice(0, 10);
+      byDay.set(key, Number(r.total) || 0);
+    }
+    const series: { date: string; revenue: number }[] = [];
+    const cursor = new Date(from);
+    while (cursor <= to) {
+      const key = cursor.toISOString().slice(0, 10);
+      series.push({ date: key, revenue: byDay.get(key) ?? 0 });
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+
+    res.json({
+      from: from.toISOString().slice(0, 10),
+      to: to.toISOString().slice(0, 10),
+      total: series.reduce((acc, p) => acc + p.revenue, 0),
+      series,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // GET /api/orders/:id — order detail (Story 16)
 router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
