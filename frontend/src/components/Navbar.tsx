@@ -78,6 +78,9 @@ export default function Navbar() {
                     <Link to="/account" className="block px-4 py-2.5 text-sm text-brand-700 hover:bg-brand-50 transition-colors">Profile</Link>
                     <Link to="/wishlist" className="block px-4 py-2.5 text-sm text-brand-700 hover:bg-brand-50 transition-colors">Wishlist</Link>
                     <Link to="/orders" className="block px-4 py-2.5 text-sm text-brand-700 hover:bg-brand-50 transition-colors">Order History</Link>
+                    {user.role === "sales_manager" && (
+                      <Link to="/admin/revenue" className="block px-4 py-2.5 text-sm text-brand-700 hover:bg-brand-50 transition-colors">Revenue Chart</Link>
+                    )}
                     <div className="border-t border-brand-100 my-1" />
                     <button onClick={() => { setMenuOpen(false); logout(); navigate("/"); }} className="block w-full text-left px-4 py-2.5 text-sm text-brand-700 hover:bg-brand-50 transition-colors">Sign Out</button>
                   </div>
@@ -100,6 +103,9 @@ export default function Navbar() {
             {user && <Link to="/wishlist" onClick={() => setMobileOpen(false)} className="text-sm text-brand-700">Wishlist</Link>}
             {user && <Link to="/account" onClick={() => setMobileOpen(false)} className="text-sm text-brand-700">Profile</Link>}
             {user && <Link to="/orders" onClick={() => setMobileOpen(false)} className="text-sm text-brand-700">Order History</Link>}
+            {user && user.role === "sales_manager" && (
+              <Link to="/admin/revenue" onClick={() => setMobileOpen(false)} className="text-sm text-brand-700">Revenue Chart</Link>
+            )}
           </div>
         )}
       </nav>
